@@ -1,8 +1,8 @@
 # Four peices needed
-# Open a connection
-# Somethiing to run schema.sql once
-# Something to write rows in
-# Something to read rows back out as a Data Frame
+# Open a connection - get_connection()
+# Somethiing to run schema.sql once - init_db()
+# Something to write rows in - upsert_prices(df, ticker)
+# Something to read rows back out as a Data Frame - load_prices(ticker, start=None, end=None)
 
 import sqlite3
 import pandas as pd
@@ -10,16 +10,17 @@ from config import DB_PATH
 from pathlib import Path
 
 # get_connection() - opens (or creates if non-existent) SQL file at DB_PATH
-def get_connection():
+def get_connection(db_path=DB_PATH):
     # Open connection; creates a file if it doesn't exist
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path)
     return conn
 
 # init_db() - calls get_connection(), runs schema.sql 
 
-def init_db():
-    conn = get_connection()
+def init_db(db_path=DB_PATH):
+    conn = get_connection(db_path)
     schema_path = Path(__file__).resolve().parent / "schema.sql"
     with open(schema_path, 'r') as file:
         sql_script = file.read()
@@ -34,9 +35,9 @@ def init_db():
 # runs insert ... on conflict ... do update for each row
 # what ingestion module (yfinance_client.py) will call after it fetches data
 
-def upsert_prices(df, ticker):
+def upsert_prices(df, ticker, db_path=DB_PATH):
     # get connection -– only necessary for the write portion
-    conn = get_connection()
+    conn = get_connection(db_path)
 
     # reshape first
     # convert date from index to column
@@ -83,10 +84,10 @@ def upsert_prices(df, ticker):
 # calls get_connection(), builds a SELECT (optionally narrowes by data range), runs it throuhg pd.read_sql_query
 # shapes result back into DataFrame indexed by date.
 
-def load_prices(ticker, start=None, end=None):
+def load_prices(ticker, start=None, end=None, db_path=DB_PATH):
 
     # get a connection
-    conn = get_connection()
+    conn = get_connection(db_path)
 
     # build a SELECT stmt
     # only ticker, no date range
